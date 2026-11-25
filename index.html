@@ -110,7 +110,7 @@ $("bSend").onclick=async function(){
   $("bSend").disabled=true;st.textContent="Sending…";
   var r=await sb.from("requests").insert(row);
   $("bSend").disabled=false;
-  if(r.error){st.textContent="Something went wrong. Please try again later."}
+  if(r.error){st.textContent="Error: "+r.error.message}
   else{st.textContent="Thanks! Your request was sent. A parent or guardian will get an email to confirm a time.";
     ["bStudent","bEmail","bGrade","bTimes","bNotes"].forEach(function(i){$(i).value=""})}
 };
