@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grayson’s History Tutoring</title>
+<title>Grayson's History Tutoring</title>
 <style>
 :root{--bg:#f7f8fa;--card:#fff;--text:#1c2330;--muted:#5d6778;--line:#e2e6ec;--accent:#3b6df0;--accent-t:#fff;--ok:#1d8a4e;--bad:#c0392b}
 @media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#181e29;--text:#e8ecf3;--muted:#9aa5b8;--line:#2a3242;--accent:#6c93ff;--accent-t:#0b1020;--ok:#4cc27f;--bad:#ff7b6b}}
@@ -48,12 +48,12 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 <div class="card"><h2>How it works</h2>
 <ol style="margin:0;padding-left:20px">
 <li>Send a request below.</li>
-<li>I review it and email the parent or guardian to confirm a time.</li>
-<li>Sessions run over video call, with a parent nearby.</li>
+<li>I review it and email back to confirm a time.</li>
+<li>Sessions run over video call.</li>
 <li>You get a short recap after every session.</li></ol></div>
 <div class="card" id="book"><h2>Request a session</h2>
 <label>Student’s first name</label><input id="bStudent" maxlength="60">
-<label>Parent or guardian email</label><input id="bEmail" type="email" maxlength="120">
+<label>Parent/Gaurdian email and Student/Personal email</label><input id="bEmail" type="email" maxlength="120">
 <label>Subject</label><select id="bSubject"></select>
 <label>Grade</label><input id="bGrade" maxlength="20" placeholder="e.g. 7th">
 <label>Days and times that work</label><textarea id="bTimes" rows="2" maxlength="300"></textarea>
@@ -98,8 +98,8 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 // ===== EDIT THESE =====
 var CFG={
   name:"Grayson’s History Tutoring",
-  bio:"I’m a high school student who loves history, and I help younger students understand it instead of just memorizing it. I tutor World History, American History, and Government.",
-  subjects:["World History","American History","Government"],
+  bio:"I’m a high school student who loves history, and I help younger students understand and stick with it. I tutor World History, American History, Government, and Middle School History.",
+  subjects:["World History","American History","Government","Middle School"],
   rate:15,
   SUPABASE_URL:"https://lmvjbvnxptnwzgvitlhh.supabase.co",
   SUPABASE_KEY:"sb_publishable_mgBpI4t4tJseZymln2UU8Q_EyustP2z"
