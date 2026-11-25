@@ -26,6 +26,10 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 .tag{font-size:.75rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line)}
 .approved{color:var(--ok)}.declined{color:var(--bad)}
 .hp{position:absolute;left:-9999px}
+.btn.alt.on{background:var(--accent);color:var(--accent-t)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.row small{color:var(--muted)}
+.x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem}
 </style>
 </head>
 <body>
@@ -66,9 +70,26 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 <label>Password</label><input id="aPass" type="password" autocomplete="current-password">
 <button class="btn" id="aLogin">Sign in</button>
 <p class="note" id="aStatus"></p></div>
-<div class="card" id="inbox" style="display:none"><h2>Session requests</h2>
-<button class="btn alt sm" id="aRefresh">Refresh</button><button class="btn alt sm" id="aOut">Sign out</button>
-<div id="reqList"></div></div>
+<div id="inbox" style="display:none">
+<div class="card"><button class="btn alt sm on" id="tabR">Requests</button><button class="btn alt sm" id="tabS">Sessions &amp; earnings</button><button class="btn alt sm" id="aRefresh">Refresh</button><button class="btn alt sm" id="aOut">Sign out</button></div>
+<div id="reqWrap"><div class="card"><h2>Session requests</h2><div id="reqList"></div></div></div>
+<div id="sesWrap" style="display:none">
+<div class="card"><h2>Earnings</h2><div class="grid">
+<div class="pill"><div class="big" id="tEarn">$0</div>earned</div>
+<div class="pill"><div class="big" id="tUnpaid">$0</div>unpaid</div>
+<div class="pill"><div class="big" id="tHours">0</div>hours</div></div></div>
+<div class="card"><h2>Log a session</h2>
+<label>Date</label><input id="lDate" type="date">
+<label>Student</label><input id="lStudent" maxlength="60">
+<label>Subject</label><input id="lSubject" maxlength="60">
+<label>Minutes</label><input id="lMin" type="number" value="60" min="5" step="5">
+<label>Rate per hour ($)</label><input id="lRate" type="number" min="0" step="1">
+<label><input type="checkbox" id="lPaid" style="width:auto"> Paid already</label>
+<button class="btn" id="lAdd">Add session</button>
+<p class="note" id="lStatus"></p></div>
+<div class="card"><h2>Sessions</h2><div id="sesList"></div></div>
+</div>
+</div>
 </section>
 
 </div>
@@ -110,7 +131,7 @@ $("bSend").onclick=async function(){
   $("bSend").disabled=true;st.textContent="Sending…";
   var r=await sb.from("requests").insert(row);
   $("bSend").disabled=false;
-  if(r.error){st.textContent="Error: "+r.error.message}
+  if(r.error){st.textContent="Something went wrong. Please try again later."}
   else{st.textContent="Thanks! Your request was sent. A parent or guardian will get an email to confirm a time.";
     ["bStudent","bEmail","bGrade","bTimes","bNotes"].forEach(function(i){$(i).value=""})}
 };
@@ -121,7 +142,7 @@ async function checkSession(){
   var s=await sb.auth.getSession();
   var on=!!(s.data&&s.data.session);
   $("loginBox").style.display=on?"none":"";$("inbox").style.display=on?"":"none";
-  if(on)loadReqs();
+  if(on){loadReqs();loadSes()}
 }
 $("aLogin").onclick=async function(){
   $("aStatus").textContent="Signing in…";
@@ -129,7 +150,44 @@ $("aLogin").onclick=async function(){
   if(r.error){$("aStatus").textContent="Sign in failed."}else{$("aPass").value="";$("aStatus").textContent="";checkSession()}
 };
 $("aOut").onclick=async function(){await sb.auth.signOut();checkSession()};
-$("aRefresh").onclick=loadReqs;
+$("aRefresh").onclick=function(){loadReqs();loadSes()};
+function tab(t){var r=t==="r";$("reqWrap").style.display=r?"":"none";$("sesWrap").style.display=r?"none":"";
+  $("tabR").classList.toggle("on",r);$("tabS").classList.toggle("on",!r)}
+$("tabR").onclick=function(){tab("r")};$("tabS").onclick=function(){tab("s")};
+$("lDate").value=new Date().toISOString().slice(0,10);$("lRate").value=CFG.rate;
+var SES=[];
+function money(n){return "$"+(Math.round(n*100)/100).toFixed(2)}
+function amt(x){return x.minutes/60*Number(x.rate)}
+async function loadSes(){
+  var r=await sb.from("sessions").select("*").order("session_date",{ascending:false}).order("created_at",{ascending:false});
+  if(r.error){$("sesList").textContent="Couldn’t load sessions. Did you run sessions.sql in Supabase?";return}
+  SES=r.data;renderSes();
+}
+function renderSes(){
+  var earn=0,unp=0,mins=0;
+  SES.forEach(function(x){mins+=x.minutes;if(x.paid)earn+=amt(x);else unp+=amt(x)});
+  $("tEarn").textContent=money(earn);$("tUnpaid").textContent=money(unp);$("tHours").textContent=Math.round(mins/6)/10;
+  var box=$("sesList");box.textContent="";
+  if(!SES.length){box.appendChild(el("p","No sessions yet.","muted"));return}
+  SES.forEach(function(x){
+    var row=el("div",null,"row"),l=el("div"),r=el("div");
+    l.appendChild(el("strong",x.student));l.appendChild(document.createTextNode(" · "+x.subject));l.appendChild(el("br"));
+    l.appendChild(el("small",x.session_date+" · "+x.minutes+" min · "+money(amt(x))));
+    var p=el("button",x.paid?"✅":"⬜","x");p.title="Toggle paid";
+    p.onclick=async function(){await sb.from("sessions").update({paid:!x.paid}).eq("id",x.id);loadSes()};
+    var d=el("button","✕","x");d.title="Delete";
+    d.onclick=async function(){if(confirm("Delete this session?")){await sb.from("sessions").delete().eq("id",x.id);loadSes()}};
+    r.appendChild(p);r.appendChild(d);row.appendChild(l);row.appendChild(r);box.appendChild(row);
+  });
+}
+$("lAdd").onclick=async function(){
+  var st=$("lStatus"),row={session_date:$("lDate").value,student:$("lStudent").value.trim(),subject:$("lSubject").value.trim()||"—",
+    minutes:parseInt($("lMin").value,10),rate:parseFloat($("lRate").value),paid:$("lPaid").checked};
+  if(!row.session_date||!row.student||!row.minutes||isNaN(row.rate)){st.textContent="Fill in date, student, minutes, and rate.";return}
+  var r=await sb.from("sessions").insert(row);
+  if(r.error){st.textContent="Couldn’t save. Did you run sessions.sql in Supabase?";return}
+  st.textContent="Added.";$("lStudent").value="";$("lPaid").checked=false;loadSes();
+};
 async function loadReqs(){
   var box=$("reqList");box.textContent="Loading…";
   var r=await sb.from("requests").select("*").order("created_at",{ascending:false});
