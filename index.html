@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grayson’s History Tutoring</title>
+<style>
+:root{--bg:#f7f8fa;--card:#fff;--text:#1c2330;--muted:#5d6778;--line:#e2e6ec;--accent:#3b6df0;--accent-t:#fff;--ok:#1d8a4e;--bad:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#181e29;--text:#e8ecf3;--muted:#9aa5b8;--line:#2a3242;--accent:#6c93ff;--accent-t:#0b1020;--ok:#4cc27f;--bad:#ff7b6b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+h1{font-size:1.8rem;margin:0 0 6px}h2{font-size:1.15rem;margin:0 0 10px}
+.muted,.note{color:var(--muted)}.note{font-size:.85rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pill{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.big{font-size:1.5rem;font-weight:700}
+label{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
+.btn{margin-top:14px;padding:11px 16px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-t);font:inherit;font-weight:600;cursor:pointer}
+.btn.alt{background:transparent;color:var(--accent);border:1px solid var(--accent);margin-right:6px}
+.btn.sm{margin-top:8px;padding:6px 10px;font-size:.85rem}
+.view{display:none}.view.on{display:block}
+.req{border-top:1px solid var(--line);padding:12px 0}
+.tag{font-size:.75rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line)}
+.approved{color:var(--ok)}.declined{color:var(--bad)}
+.hp{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section id="pub" class="view on">
+<div class="card">
+<h1 id="tName"></h1>
+<p class="muted" id="tBio"></p>
+<a href="#book"><button class="btn">Request a free first session</button></a>
+</div>
+<div class="card"><h2>Subjects</h2><div class="grid" id="subjects"></div></div>
+<div class="card"><h2>Pricing</h2><div class="grid">
+<div class="pill"><div class="big" id="pRate"></div>per hour</div>
+<div class="pill"><div class="big">Free</div>first session</div></div></div>
+<div class="card"><h2>How it works</h2>
+<ol style="margin:0;padding-left:20px">
+<li>Send a request below.</li>
+<li>I review it and email the parent or guardian to confirm a time.</li>
+<li>Sessions run over video call, with a parent nearby.</li>
+<li>You get a short recap after every session.</li></ol></div>
+<div class="card" id="book"><h2>Request a session</h2>
+<label>Student’s first name</label><input id="bStudent" maxlength="60">
+<label>Parent or guardian email</label><input id="bEmail" type="email" maxlength="120">
+<label>Subject</label><select id="bSubject"></select>
+<label>Grade</label><input id="bGrade" maxlength="20" placeholder="e.g. 7th">
+<label>Days and times that work</label><textarea id="bTimes" rows="2" maxlength="300"></textarea>
+<label>What do you need help with?</label><textarea id="bNotes" rows="3" maxlength="1000"></textarea>
+<input class="hp" id="bWeb" tabindex="-1" autocomplete="off" aria-hidden="true">
+<button class="btn" id="bSend">Send request</button>
+<p class="note" id="bStatus"></p>
+<p class="note">Please don’t share home addresses or phone numbers here.</p></div>
+</section>
+
+<section id="admin" class="view">
+<div class="card" id="loginBox"><h2>Admin sign in</h2>
+<label>Email</label><input id="aEmail" type="email" autocomplete="username">
+<label>Password</label><input id="aPass" type="password" autocomplete="current-password">
+<button class="btn" id="aLogin">Sign in</button>
+<p class="note" id="aStatus"></p></div>
+<div class="card" id="inbox" style="display:none"><h2>Session requests</h2>
+<button class="btn alt sm" id="aRefresh">Refresh</button><button class="btn alt sm" id="aOut">Sign out</button>
+<div id="reqList"></div></div>
+</section>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ===== EDIT THESE =====
+var CFG={
+  name:"Grayson’s History Tutoring",
+  bio:"I’m a high school student who loves history, and I help younger students understand it instead of just memorizing it. I tutor World History, American History, and Government.",
+  subjects:["World History","American History","Government"],
+  rate:15,
+  SUPABASE_URL:"lmvjbvnxptnwzgvitlhh",
+  SUPABASE_KEY:"sb_publishable_mgBpI4t4tJseZymln2UU8Q_EyustP2z"
+};
+// ======================
+function $(i){return document.getElementById(i)}
+function el(tag,txt,cls){var e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e}
+$("tName").textContent=CFG.name;document.title=CFG.name;$("tBio").textContent=CFG.bio;$("pRate").textContent="$"+CFG.rate;
+CFG.subjects.forEach(function(s){$("subjects").appendChild(el("div",s,"pill"));$("bSubject").appendChild(el("option",s))});
+
+var sb=null;
+try{sb=supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_KEY)}catch(e){}
+
+function route(){
+  var admin=location.hash==="#admin";
+  $("pub").classList.toggle("on",!admin);$("admin").classList.toggle("on",admin);
+  if(admin)checkSession();
+}
+window.addEventListener("hashchange",route);
+
+// ---- booking ----
+$("bSend").onclick=async function(){
+  var st=$("bStatus");
+  if($("bWeb").value){st.textContent="Thanks! Your request was sent.";return}
+  var row={student_name:$("bStudent").value.trim(),parent_email:$("bEmail").value.trim(),subject:$("bSubject").value,
+    grade:$("bGrade").value.trim(),times:$("bTimes").value.trim(),notes:$("bNotes").value.trim()};
+  if(!row.student_name||!/^\S+@\S+\.\S+$/.test(row.parent_email)){st.textContent="Please add the student’s name and a valid parent email.";return}
+  if(!sb){st.textContent="Booking isn’t set up yet.";return}
+  $("bSend").disabled=true;st.textContent="Sending…";
+  var r=await sb.from("requests").insert(row);
+  $("bSend").disabled=false;
+  if(r.error){st.textContent="Something went wrong. Please try again later."}
+  else{st.textContent="Thanks! Your request was sent. A parent or guardian will get an email to confirm a time.";
+    ["bStudent","bEmail","bGrade","bTimes","bNotes"].forEach(function(i){$(i).value=""})}
+};
+
+// ---- admin ----
+async function checkSession(){
+  if(!sb)return;
+  var s=await sb.auth.getSession();
+  var on=!!(s.data&&s.data.session);
+  $("loginBox").style.display=on?"none":"";$("inbox").style.display=on?"":"none";
+  if(on)loadReqs();
+}
+$("aLogin").onclick=async function(){
+  $("aStatus").textContent="Signing in…";
+  var r=await sb.auth.signInWithPassword({email:$("aEmail").value.trim(),password:$("aPass").value});
+  if(r.error){$("aStatus").textContent="Sign in failed."}else{$("aPass").value="";$("aStatus").textContent="";checkSession()}
+};
+$("aOut").onclick=async function(){await sb.auth.signOut();checkSession()};
+$("aRefresh").onclick=loadReqs;
+async function loadReqs(){
+  var box=$("reqList");box.textContent="Loading…";
+  var r=await sb.from("requests").select("*").order("created_at",{ascending:false});
+  box.textContent="";
+  if(r.error){box.textContent="Couldn’t load requests (are you signed in as the admin?).";return}
+  if(!r.data.length){box.appendChild(el("p","No requests yet.","muted"));return}
+  r.data.forEach(function(q){
+    var d=el("div",null,"req");
+    var h=el("div");h.appendChild(el("strong",q.student_name));h.appendChild(document.createTextNode(" · "+q.subject+(q.grade?" · "+q.grade:"")+"  "));
+    h.appendChild(el("span",q.status,"tag "+q.status));d.appendChild(h);
+    d.appendChild(el("div",new Date(q.created_at).toLocaleString()+" · "+q.parent_email,"note"));
+    if(q.times)d.appendChild(el("div","Times: "+q.times));
+    if(q.notes)d.appendChild(el("div","Notes: "+q.notes));
+    function b(label,fn){var x=el("button",label,"btn alt sm");x.onclick=fn;d.appendChild(x)}
+    b("Approve",function(){setStatus(q.id,"approved")});
+    b("Decline",function(){setStatus(q.id,"declined")});
+    var a=el("a");a.href="mailto:"+encodeURIComponent(q.parent_email).replace("%40","@")+"?subject="+encodeURIComponent("Tutoring session")+"&body="+encodeURIComponent("Hi! Thanks for requesting a session for "+q.student_name+". ");
+    a.appendChild(el("button","Email parent","btn alt sm"));d.appendChild(a);
+    b("Delete",async function(){if(confirm("Delete this request?")){await sb.from("requests").delete().eq("id",q.id);loadReqs()}});
+    box.appendChild(d);
+  });
+}
+async function setStatus(id,s){await sb.from("requests").update({status:s}).eq("id",id);loadReqs()}
+route();
+</script>
+</body>
+</html>
